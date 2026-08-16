@@ -1,0 +1,74 @@
+#define BLYNK_TEMPLATE_ID "TMPL3hmsFazQb"
+#define BLYNK_TEMPLATE_NAME "army man"
+#define BLYNK_AUTH_TOKEN "yQsdx_t9LujsTZQGJ5AnaMQaIyoxEe5Z"
+#define BLYNK_PRINT Serial
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+int sen1=0,sen2=0,sen3=0,sen4=0,n=0;
+char ssid[] = "Armyman";
+char pass[] = "123456789";
+//tahifav684@barodis.com
+//Galwin@123
+String Message="light_fault!!";
+char red1;
+int c,f,R;
+// Cayenne authentication info. This should be obtained from the Cayenne Dashboard.
+void setup() 
+{
+    Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+Serial.begin(9600);
+}      
+void loop()  
+{   
+  //Serial.print("hiiii");
+  if(Serial.available()>0)
+{
+  char red1=Serial.read();delay(100);
+  if(red1=='A')                          //  Level sensor
+{
+  float sen1=Serial.parseFloat();
+   //Serial.print(sen1);
+   Blynk.virtualWrite(V0,sen1);delay(200);  
+} 
+  if(red1=='B')                          // Flow sensor
+{
+  float sen2=Serial.parseFloat();
+   //Serial.print(sen2);
+  // Serial.println("Blynk notification Sent to Mobile");
+    //Blynk.logEvent("light_fault");
+    Blynk.virtualWrite(V1,sen2);delay(200);
+}
+  if(red1=='H')                          //  Level sensor
+{
+  float sen3=Serial.parseFloat();
+   //Serial.print(sen3);
+   Blynk.virtualWrite(V2,sen3);delay(200);
+} 
+ if(red1=='T')                          //  Level sensor
+{
+  float sen3=Serial.parseFloat();
+   //Serial.print(sen3);
+   Blynk.virtualWrite(V3,sen3);delay(200);
+} 
+ if(red1=='1')                          //  Level sensor
+{
+  Serial.println("Blynk notification Sent to Mobile");
+  Blynk.logEvent("i_need_weapon");
+} 
+ if(red1=='2')                          //  Level sensor
+{
+  Serial.println("Blynk notification Sent to Mobile");
+  Blynk.logEvent("i_need_food");
+} 
+ if(red1=='3')                          //  Level sensor
+{
+    Serial.println("Blynk notification Sent to Mobile");
+  Blynk.logEvent("i_need_water");
+} 
+ if(red1=='4')                          //  Level sensor
+{
+     Serial.println("Blynk notification Sent to Mobile");
+  Blynk.logEvent("i_need_emergency_help");
+} 
+}
+}
