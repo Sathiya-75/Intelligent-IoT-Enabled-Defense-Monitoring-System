@@ -1,0 +1,187 @@
+#include <LiquidCrystal.h>
+#include <SoftwareSerial.h>
+#define rxPin A3
+#define txPin 2
+SoftwareSerial mySerial(rxPin, txPin);
+LiquidCrystal lcd(8, 9, 10, 11, 12, 13);
+int a1, a2; // Soil moisture and rain sensor readings
+int s1, s2, s3, s4;
+#define temp A0
+#define HB 7
+#define sw1 6
+#define sw2 4
+#define sw3 5
+#define sw4 3
+#define relay1 A1
+#define relay2 A2
+int Gpsdata;  // For incoming serial data
+unsigned int finish = 0;  // Indicate end of message
+unsigned int pos_cnt = 0;  // Position counter
+unsigned int lat_cnt = 0;  // Latitude data counter
+unsigned int log_cnt = 0;  // Longitude data counter
+unsigned int flg = 0;  // GPS flag
+unsigned int com_cnt = 0;  // Comma counter
+char lat[20];  // Latitude array
+char lg[20];  // Longitude array
+unsigned int AVALB = 0, AVALE = 0, AVALG = 1, AVALC = 0, AVALD = 0, count = 0;
+unsigned int A = 0, VALA = 1, VALB = 0;
+void setup() {
+  mySerial.begin(9600);  // Initialize GPS serial connection
+  Serial.begin(9600);  // Initialize Serial Monitor
+  pinMode(temp, INPUT);
+  pinMode(HB, INPUT);
+  pinMode(sw1, INPUT);
+  pinMode(sw2, INPUT);
+  pinMode(sw3, INPUT);
+  pinMode(sw4, INPUT);
+  pinMode(relay1, OUTPUT);
+  pinMode(relay2, OUTPUT);
+  lcd.begin(16, 2);
+  lcd.setCursor(0, 0);
+  lcd.print("    WELCOME   ");
+  delay(2000);
+  lcd.clear();
+}
+void loop()
+ {
+  heartbeat();
+  delay(100);
+  Receive_GPS_Data();  // Receive GPS data
+  delay(100);
+  a1 = analogRead(temp);
+  int t = a1 / 3;
+  delay(100); // wait two seconds
+  lcd.setCursor(0, 1);
+  lcd.print("temp=");
+  lcd.print(t);
+  // Send the temperature, GPS coordinates, and heartbeat to the serial monitor
+ Serial.print("T");
+ Serial.print(t);
+  Serial.print("A");
+  Serial.print(lat);
+  Serial.print("B");
+  Serial.print(lg);
+  delay(2000);
+  if (t >= 38) {
+    digitalWrite(relay1, HIGH);
+    delay(3000);
+    digitalWrite(relay1, LOW);
+    digitalWrite(relay2, HIGH);
+    delay(3000);
+    digitalWrite(relay2, LOW);
+  } else {
+    digitalWrite(relay1, LOW);
+    digitalWrite(relay2, LOW);
+  }
+  s1 = digitalRead(sw1);
+  s2 = digitalRead(sw2);
+  s3 = digitalRead(sw3);
+  s4 = digitalRead(sw4);
+  if (s1 == 1) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("i need weapon");
+    delay(2000);
+    lcd.clear();
+    Serial.print("1");
+  }
+  if (s2 == 1) {
+    lcd.setCursor(0, 0);
+    lcd.print("i need food");
+    delay(2000);
+    lcd.clear();
+    Serial.print("2");
+  }
+  if (s3 == 1) {
+    lcd.setCursor(0, 0);
+    lcd.print("i need water");
+    delay(2000);
+    lcd.clear();
+    Serial.print("3");
+  }
+  if (s4 == 1) {
+    lcd.setCursor(0, 0);
+    lcd.print("i need help");
+    delay(2000);
+    lcd.clear();
+    Serial.print("4");
+  }
+}
+void heartbeat() {
+  AVALB = digitalRead(HB);
+  if (AVALB == 0 && AVALG == 1) {
+    AVALG = 0;
+    AVALC = 1;
+  }
+  count = 0;
+  if (AVALC == 1) {
+    while (AVALC == 1) {
+      AVALB = digitalRead(HB);
+      if (AVALB == 0) {
+        count++;
+      }
+      if (AVALD >= 14) {
+        AVALC = 0;
+      }
+      AVALD++;
+      delay(1000);
+    }
+  }
+  if (count >= 11 && count <= 15) {
+    AVALE = count * 6;
+  } else if (count >= 5 && count <= 10) {
+    AVALE = count * 9;
+  } else if (count >= 0 && count <= 4) {
+    AVALE = count * 15;
+  }
+  if (AVALE >= 45 && AVALE <= 59) {
+    AVALE = 73;
+  }
+  lcd.setCursor(0, 0);
+  lcd.print("HB=");
+  lcd.print(AVALE);
+ Serial.print("H");
+ Serial.print(AVALE);
+ delay(1000);
+  AVALG = 1;
+  AVALE = 0;
+  AVALD = 0; 
+}
+void Receive_GPS_Data() {
+  while (finish == 0) {
+    while (Serial.available() > 0) {  // Check GPS data
+      Gpsdata = Serial.read();
+      flg = 1;
+      // Find GPRMC header
+      if (Gpsdata == '$' && pos_cnt == 0) pos_cnt = 1;
+      if (Gpsdata == 'G' && pos_cnt == 1) pos_cnt = 2;
+      if (Gpsdata == 'P' && pos_cnt == 2) pos_cnt = 3;
+      if (Gpsdata == 'R' && pos_cnt == 3) pos_cnt = 4;
+      if (Gpsdata == 'M' && pos_cnt == 4) pos_cnt = 5;
+      if (Gpsdata == 'C' && pos_cnt == 5) pos_cnt = 6;
+      if (pos_cnt == 6 && Gpsdata == ',') { // Count commas in message
+        com_cnt++;
+        flg = 0;
+      }
+      if (com_cnt == 3 && flg == 1) {
+        if (lat_cnt < 10) {
+          lat[lat_cnt++] = Gpsdata; // Latitude
+        }
+        flg = 0;
+      }
+      if (com_cnt == 5 && flg == 1) {
+        if (log_cnt < 12) {
+          lg[log_cnt++] = Gpsdata; // Longitude
+        }
+        flg = 0;
+      }
+      if (Gpsdata == '*' && com_cnt >= 5) { // End of GPRMC message
+        com_cnt = 0;
+        lat_cnt = 0;
+        log_cnt = 0;
+        flg = 0;
+        finish = 1;
+      }
+    }
+  }
+}
